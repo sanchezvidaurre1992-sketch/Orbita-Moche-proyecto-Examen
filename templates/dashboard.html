@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Órbita Moche & Lambayeque | NASA Space Apps</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #0b0f19; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .navbar-nasa { background-color: #111827; border-bottom: 1px solid #1f2937; }
+        .card-dark { background-color: #151c2c; border: 1px solid #263147; border-radius: 12px; }
+        #map { height: 440px; width: 100%; border-radius: 10px; z-index: 1; }
+        .kpi-value { font-size: 1.7rem; font-weight: 700; color: #38bdf8; }
+        .kpi-label { font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-source { background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+        .risk-Alto { background-color: #dc2626; color: white; }
+        .risk-Moderado { background-color: #d97706; color: white; }
+        .risk-Bajo { background-color: #059669; color: white; }
+        .tinajones-box { background-color: rgba(14, 165, 233, 0.08); border-left: 3px solid #0ea5e9; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark navbar-nasa px-4 py-3 mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1 d-flex align-items-center gap-2">
+                <i class="bi bi-globe-americas text-info"></i>
+                <span><strong>ÓRBITA MOCHE</strong> <small class="text-secondary fs-6">| Agro-Intelligence</small></span>
+            </span>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span id="fuente-badge" class="badge badge-source px-3 py-2 d-none d-lg-inline">NASA POWER</span>
+                <span class="badge bg-dark border border-info text-info px-2 py-2">
+                    <i class="bi bi-person-badge me-1"></i>{{ session.get('user_nombre') }} | <strong>{{ session.get('user_rol')|upper }}</strong>
+                </span>
+                <select id="langSelect" class="form-select form-select-sm bg-dark text-info border-info fw-bold" style="width: auto;">
+                    <option value="es">Español</option>
+                    <option value="en" selected>English</option>
+                </select>
+                <a href="/" id="btn-home" class="btn btn-outline-light btn-sm">Home</a>
+                <a href="/logout" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} py-2 small">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Controles: Único selector de Zona + Panel de Metadatos Hídricos -->
+        <div class="row mb-4 g-3 align-items-stretch">
+            <div class="col-lg-6">
+                <div class="card card-dark p-3 h-100">
+                    <label for="sectorSelect" id="lbl-select-zone" class="form-label text-info small fw-bold mb-2">
+                        SELECT AGRICULTURAL ZONE / BASIN:
+                    </label>
+                    <select id="sectorSelect" class="form-select bg-dark text-light border-secondary mb-2">
+                        {% for key, val in sectores.items() %}
+                        <option value="{{ key }}" {% if key == 'morrope_san_jose_tinajones' %}selected{% endif %}>
+                            {{ val.nombre_en }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small id="lbl-zone-hint" class="text-secondary">Click any zone to query NASA earth observation layers in real time.</small>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card card-dark p-3 h-100 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <small id="lbl-crop-terrain" class="text-secondary d-block">Basin Operational Status & Terrain (SRTM)</small>
+                            <strong id="meta-info" class="text-light fs-6">--</strong>
+                        </div>
+                        <div class="text-end">
+                            <small id="lbl-risk-level" class="text-secondary d-block mb-1">Risk Level</small>
+                            <span id="riesgo-badge" class="badge fs-6 px-3 py-1">--</span>
+                        </div>
+                    </div>
+                    <div class="tinajones-box px-3 py-2 mt-2 rounded small">
+                        <i class="bi bi-water text-info me-1"></i>
+                        <strong id="lbl-water-system">Water System & Economic Impact:</strong>
+                        <span id="meta-agua" class="text-light">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="card card-dark p-3 h-100">
+                    <div class="kpi-label"><i class="bi bi-thermometer-half text-warning"></i> <span id="lbl-kpi-temp">Mean Temp. (POWER)</span></div>
+                    <div class="kpi-value mt-1" id="kpi-temp">-- °C</div>
+                    <small id="sub-kpi-temp" class="text-secondary">Last 7-day average</small>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card card-dark p-3 h-100">
+                    <div class="kpi-label"><i class="bi bi-cloud-rain text-info"></i> <span id="lbl-kpi-precip">Precipitation (GPM)</span></div>
+                    <div class="kpi-value mt-1" id="kpi-precip">-- mm</div>
+                    <small id="sub-kpi-precip" class="text-secondary">Recent accumulation</small>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card card-dark p-3 h-100">
+                    <div class="kpi-label"><i class="bi bi-droplet-fill text-primary"></i> <span id="lbl-kpi-smap">Soil Moisture (SMAP)</span></div>
+                    <div class="kpi-value mt-1" id="kpi-smap">-- m³/m³</div>
+                    <small id="sub-kpi-smap" class="text-secondary">Topsoil layer (0-5 cm)</small>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card card-dark p-3 h-100">
+                    <div class="kpi-label"><i class="bi bi-flower1 text-success"></i> <span id="lbl-kpi-ndvi">Vigor Index (NDVI)</span></div>
+                    <div class="kpi-value mt-1 text-success" id="kpi-ndvi">--</div>
+                    <small class="text-secondary">Landsat / Sentinel-2</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mapa + Gráfico + Recomendaciones -->
+        <div class="row g-4 mb-5">
+            <div class="col-lg-6">
+                <div class="card card-dark p-3 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-geo-alt text-danger"></i> <span id="lbl-map-title">Satellite View of Basins & Districts</span></h6>
+                        <small id="lbl-map-hint" class="text-secondary">Click markers to analyze</small>
+                    </div>
+                    <div id="map"></div>
+                </div>
+            </div>
+
+            <div class="col-lg-6 d-flex flex-column gap-4">
+                <div class="card card-dark p-3">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-graph-up text-info"></i> <span id="lbl-chart-title">Daily Thermal Trend (NASA POWER)</span></h6>
+                    <div style="height: 190px;"><canvas id="tempChart"></canvas></div>
+                </div>
+
+                <div class="card card-dark p-3 flex-grow-1">
+                    <h6 class="fw-bold mb-3 text-warning"><i class="bi bi-lightbulb-fill"></i> <span id="lbl-rec-title">Water Management, Groundwater & Salinity Alerts</span></h6>
+                    <ul id="lista-recomendaciones" class="list-group list-group-flush"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================================================================== -->
+        <!-- MÓDULO CRUD SQLITE: REGISTRO Y GESTIÓN DE MONITOREO EN CAMPO / POZOS -->
+        <!-- ===================================================================== -->
+        <div class="row g-4 mb-5">
+            <!-- Formulario CREATE -->
+            <div class="col-lg-4">
+                <div class="card card-dark p-4 h-100">
+                    <h6 class="fw-bold text-info mb-3">
+                        <i class="bi bi-database-add me-2"></i>Registrar Monitoreo de Salinidad (SQLite)
+                    </h6>
+                    <form method="POST" action="/reportes/crear">
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Zona / Cuenca Evaluada</label>
+                            <select name="sector_id" class="form-select form-select-sm bg-dark text-light border-secondary" required>
+                                {% for key, val in sectores.items() %}
+                                <option value="{{ key }}">{{ val.nombre_es }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Tipo de Fuente / Pozo</label>
+                            <input type="text" name="tipo_pozo" class="form-control form-control-sm bg-dark text-light border-secondary" required placeholder="Ej. Pozo Tubular / Canal Taymi">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Salinidad Medida (ppm)</label>
+                            <input type="number" step="0.1" name="salinidad_ppm" class="form-control form-control-sm bg-dark text-light border-secondary" required placeholder="Ej. 2450">
+                            <small class="text-secondary" style="font-size: 0.72rem;"><1000: Bajo | 1000–1999: Moderado | ≥2000: Alto</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Observaciones de Campo</label>
+                            <textarea name="observaciones" rows="2" class="form-control form-control-sm bg-dark text-light border-secondary" required placeholder="Descripción de estado de cultivo o agua..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-info btn-sm w-100 fw-bold text-dark">
+                            <i class="bi bi-plus-circle me-1"></i> Guardar Reporte en Base de Datos
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabla READ / UPDATE / DELETE -->
+            <div class="col-lg-8">
+                <div class="card card-dark p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold text-white mb-0">
+                            <i class="bi bi-table text-info me-2"></i>Bitácora de Reportes de Campo (CRUD SQLite)
+                        </h6>
+                        <span class="badge bg-secondary">{{ reportes|length }} registros</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover table-sm align-middle small mb-0">
+                            <thead>
+                                <tr class="text-info">
+                                    <th>ID</th>
+                                    <th>Sector</th>
+                                    <th>Fuente / Pozo</th>
+                                    <th>Salinidad</th>
+                                    <th>Alerta</th>
+                                    <th>Observaciones</th>
+                                    <th>Autor</th>
+                                    <th class="text-end">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in reportes %}
+                                <tr>
+                                    <td>#{{ r.id }}</td>
+                                    <td>{{ sectores[r.sector_id].nombre_es.split('(')[0] if r.sector_id in sectores else r.sector_id }}</td>
+                                    <td>{{ r.tipo_pozo }}</td>
+                                    <td><strong>{{ r.salinidad_ppm }}</strong> ppm</td>
+                                    <td><span class="badge risk-{{ r.nivel_alerta }}">{{ r.nivel_alerta }}</span></td>
+                                    <td>{{ r.observaciones }}</td>
+                                    <td>
+                                        <span class="d-block">{{ r.autor_nombre }}</span>
+                                        <small class="text-secondary">{{ r.fecha_reporte }}</small>
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        {% if session.get('user_rol') == 'admin' or r.usuario_id == session.get('user_id') %}
+                                            <a href="/reportes/editar/{{ r.id }}" class="btn btn-outline-warning btn-sm py-0 px-2" title="Editar">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <form method="POST" action="/reportes/eliminar/{{ r.id }}" class="d-inline" onsubmit="return confirm('¿Eliminar este registro de SQLite?');">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" title="Eliminar">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <span class="text-secondary fst-italic" style="font-size: 0.72rem;">Solo lectura</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL EXCLUSIVO DE ADMINISTRADOR: CONTROL DE ROLES -->
+        {% if session.get('user_rol') == 'admin' %}
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card card-dark p-4 border-info">
+                    <h6 class="fw-bold text-info mb-3">
+                        <i class="bi bi-shield-check me-2"></i>Panel de Administrador: Gestión de Usuarios y Permisos
+                    </h6>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-sm align-middle small mb-0">
+                            <thead>
+                                <tr class="text-secondary">
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Fecha Registro</th>
+                                    <th>Rol Actual</th>
+                                    <th>Cambiar Rol</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for u in usuarios %}
+                                <tr>
+                                    <td>{{ u.id }}</td>
+                                    <td>{{ u.nombre }}</td>
+                                    <td>{{ u.email }}</td>
+                                    <td>{{ u.fecha_registro }}</td>
+                                    <td>
+                                        <span class="badge {{ 'bg-info text-dark' if u.rol == 'admin' else 'bg-secondary' }}">
+                                            {{ u.rol|upper }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if u.id != session.get('user_id') %}
+                                        <form method="POST" action="/usuarios/rol/{{ u.id }}" class="d-flex gap-2" style="max-width: 240px;">
+                                            <select name="rol" class="form-select form-select-sm bg-dark text-light border-secondary">
+                                                <option value="investigador" {% if u.rol == 'investigador' %}selected{% endif %}>Investigador</option>
+                                                <option value="admin" {% if u.rol == 'admin' %}selected{% endif %}>Administrador</option>
+                                            </select>
+                                            <button type="submit" class="btn btn-outline-info btn-sm">Aplicar</button>
+                                        </form>
+                                        {% else %}
+                                        <span class="text-secondary">Sesión actual</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const SECTORES_DATA = {{ sectores | tojson | safe }};
+        let currentData = null;
+        let chartInstance = null;
+        let markers = {};
+
+        const UI_TEXT = {
+            es: {
+                btnHome: "Inicio",
+                selectZone: "SELECCIONAR ZONA / CUENCA AGRÍCOLA:",
+                zoneHint: "Haz clic en cualquier punto para consultar capas de observación de la NASA en tiempo real.",
+                cropTerrain: "Estado Operativo & Relieve (SRTM)",
+                riskLevel: "Nivel de Riesgo",
+                waterSystem: "Sistema Hídrico & Impacto Económico:",
+                kpiTemp: "Temp. Media (POWER)", subTemp: "Promedio últimos 7 días",
+                kpiPrecip: "Precipitación (GPM)", subPrecip: "Acumulado reciente",
+                kpiSmap: "Humedad Suelo (SMAP)", subSmap: "Capa superficial (0-5 cm)",
+                kpiNdvi: "Índice Vigor (NDVI)",
+                mapTitle: "Vista Satelital de Cuencas y Distritos",
+                mapHint: "Clic en los puntos para analizar",
+                chartTitle: "Tendencia Térmica Diaria (NASA POWER)",
+                recTitle: "Gestión Hídrica, Pozos Subterráneos & Alertas de Salinidad",
+                riskPrefix: "Riesgo:"
+            },
+            en: {
+                btnHome: "Home",
+                selectZone: "SELECT AGRICULTURAL ZONE / BASIN:",
+                zoneHint: "Click any zone to query NASA earth observation layers in real time.",
+                cropTerrain: "Basin Operational Status & Terrain (SRTM)",
+                riskLevel: "Risk Level",
+                waterSystem: "Water System & Economic Impact:",
+                kpiTemp: "Mean Temp. (POWER)", subTemp: "Last 7-day average",
+                kpiPrecip: "Precipitation (GPM)", subPrecip: "Recent accumulation",
+                kpiSmap: "Soil Moisture (SMAP)", subSmap: "Topsoil layer (0-5 cm)",
+                kpiNdvi: "Vigor Index (NDVI)",
+                mapTitle: "Satellite View of Basins & Districts",
+                mapHint: "Click markers to analyze",
+                chartTitle: "Daily Thermal Trend (NASA POWER)",
+                recTitle: "Water Management, Groundwater & Salinity Alerts",
+                riskPrefix: "Risk:"
+            }
+        };
+
+        const map = L.map('map').setView([-6.5417, -80.0111], 9);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri — NASA / USGS Earth Observation'
+        }).addTo(map);
+
+        Object.keys(SECTORES_DATA).forEach(key => {
+            const s = SECTORES_DATA[key];
+            const marker = L.circleMarker([s.lat, s.lon], {
+                radius: 10, fillColor: "#38bdf8", color: "#ffffff", weight: 2, opacity: 1, fillOpacity: 0.9
+            }).addTo(map);
+
+            marker.bindPopup(`<b>${s.nombre_en}</b>`);
+            marker.on('click', () => {
+                document.getElementById('sectorSelect').value = key;
+                cargarDatos();
+            });
+            markers[key] = marker;
+        });
+
+        function aplicarIdioma(lang) {
+            const t = UI_TEXT[lang];
+            document.getElementById('btn-home').textContent = t.btnHome;
+            document.getElementById('lbl-select-zone').textContent = t.selectZone;
+            document.getElementById('lbl-zone-hint').textContent = t.zoneHint;
+            document.getElementById('lbl-crop-terrain').textContent = t.cropTerrain;
+            document.getElementById('lbl-risk-level').textContent = t.riskLevel;
+            document.getElementById('lbl-water-system').textContent = t.waterSystem;
+            document.getElementById('lbl-kpi-temp').textContent = t.kpiTemp;
+            document.getElementById('sub-kpi-temp').textContent = t.subTemp;
+            document.getElementById('lbl-kpi-precip').textContent = t.kpiPrecip;
+            document.getElementById('sub-kpi-precip').textContent = t.subPrecip;
+            document.getElementById('lbl-kpi-smap').textContent = t.kpiSmap;
+            document.getElementById('sub-kpi-smap').textContent = t.subSmap;
+            document.getElementById('lbl-kpi-ndvi').textContent = t.kpiNdvi;
+            document.getElementById('lbl-map-title').textContent = t.mapTitle;
+            document.getElementById('lbl-map-hint').textContent = t.mapHint;
+            document.getElementById('lbl-chart-title').textContent = t.chartTitle;
+            document.getElementById('lbl-rec-title').textContent = t.recTitle;
+
+            const select = document.getElementById('sectorSelect');
+            Array.from(select.options).forEach(opt => {
+                const s = SECTORES_DATA[opt.value];
+                opt.textContent = lang === 'es' ? s.nombre_es : s.nombre_en;
+                markers[opt.value].setPopupContent(`<b>${lang === 'es' ? s.nombre_es : s.nombre_en}</b>`);
+            });
+
+            localStorage.setItem('orbita_moche_lang', lang);
+            if (currentData) renderizarDatos(currentData, lang);
+        }
+
+        function renderizarDatos(data, lang) {
+            const t = UI_TEXT[lang];
+            document.getElementById('fuente-badge').textContent = lang === 'es' ? data.fuente_es : data.fuente_en;
+            
+            const estado = lang === 'es' ? data.meta.estado_actual_es : data.meta.estado_actual_en;
+            document.getElementById('meta-info').textContent = `${estado} | SRTM: ${data.meta.pendiente_srtm}`;
+
+            const sistHidrico = lang === 'es' ? data.meta.sistema_hidrico_es : data.meta.sistema_hidrico_en;
+            document.getElementById('meta-agua').textContent = `${sistHidrico} — [${data.meta.costo_agua_estimado}]`;
+
+            const riesgoBadge = document.getElementById('riesgo-badge');
+            const nivelTexto = lang === 'es' ? data.analisis_agronomico.nivel_es : data.analisis_agronomico.nivel_en;
+            riesgoBadge.textContent = `${t.riskPrefix} ${nivelTexto}`;
+            riesgoBadge.className = `badge fs-6 px-3 py-1 risk-${data.analisis_agronomico.codigo_riesgo}`;
+
+            document.getElementById('kpi-temp').textContent = `${data.metricas.temperatura_c} °C`;
+            document.getElementById('kpi-precip').textContent = `${data.metricas.precipitacion_mm} mm`;
+            document.getElementById('kpi-smap').textContent = `${data.metricas.humedad_smap} m³/m³`;
+            document.getElementById('kpi-ndvi').textContent = data.metricas.ndvi;
+
+            const lista = document.getElementById('lista-recomendaciones');
+            lista.innerHTML = '';
+            const recs = lang === 'es' ? data.analisis_agronomico.recomendaciones_es : data.analisis_agronomico.recomendaciones_en;
+            recs.forEach(rec => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item bg-transparent text-light border-secondary px-0 py-2';
+                li.innerHTML = `<i class="bi bi-check-circle-fill text-info me-2"></i> ${rec}`;
+                lista.appendChild(li);
+            });
+        }
+
+        async function cargarDatos() {
+            const sectorId = document.getElementById('sectorSelect').value;
+            const response = await fetch(`/api/datos-zona?sector=${sectorId}`);
+            currentData = await response.json();
+            const currentLang = document.getElementById('langSelect').value;
+            renderizarDatos(currentData, currentLang);
+            map.flyTo([currentData.meta.lat, currentData.meta.lon], 11, { duration: 1.1 });
+            markers[sectorId].openPopup();
+            actualizarGrafico(currentData.series.fechas, currentData.series.temperaturas);
+        }
+
+        function actualizarGrafico(etiquetas, valores) {
+            const ctx = document.getElementById('tempChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: etiquetas,
+                    datasets: [{
+                        data: valores, borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.15)',
+                        borderWidth: 2, tension: 0.35, fill: true, pointBackgroundColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        }
+
+        document.getElementById('sectorSelect').addEventListener('change', cargarDatos);
+        document.getElementById('langSelect').addEventListener('change', (e) => {
+            aplicarIdioma(e.target.value);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('orbita_moche_lang') || 'en';
+            document.getElementById('langSelect').value = savedLang;
+            aplicarIdioma(savedLang);
+            cargarDatos();
+        });
+    </script>
+</body>
+</html>

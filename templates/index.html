@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Órbita Moche | NASA Space Apps Challenge</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #0b0f19; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .navbar-nasa { background-color: rgba(17, 24, 39, 0.95); border-bottom: 1px solid #1f2937; }
+        .hero-section {
+            background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.15), transparent 45%),
+                        radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.1), transparent 45%);
+            padding: 4.5rem 0 3.5rem 0; border-bottom: 1px solid #1e293b;
+        }
+        .card-feature { background-color: #151c2c; border: 1px solid #263147; border-radius: 12px; }
+        .nasa-tag { background-color: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.78rem; }
+        .btn-launch { background: linear-gradient(135deg, #0284c7, #0ea5e9); border: none; font-weight: 600; padding: 0.85rem 2rem; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark navbar-nasa sticky-top px-4 py-3">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+                <i class="bi bi-globe-americas text-info fs-4"></i>
+                <span><strong>ÓRBITA MOCHE</strong></span>
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <select id="langHome" class="form-select form-select-sm bg-dark text-info border-info fw-bold" style="width: auto;">
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="en" selected>🇺🇸 English</option>
+                </select>
+                <a href="/dashboard" id="nav-dash" class="btn btn-outline-info btn-sm">Go to Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="container">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-8">
+                    <span class="badge nasa-tag px-3 py-2 mb-3 rounded-pill">
+                        <i class="bi bi-rocket-takeoff me-1"></i> NASA INTERNATIONAL SPACE APPS CHALLENGE
+                    </span>
+                    <h1 id="hero-title" class="display-5 fw-bold text-white mb-3">
+                        Water resilience and smart crop rotation from space
+                    </h1>
+                    <p id="hero-desc" class="lead text-secondary mb-4">
+                        On the northern coast of Peru, severe water scarcity at the tail-end of the Tinajones Reservoir system—most critically in <strong>Mórrope and San José</strong>, alongside valley districts like <strong>Túcume, Mochumí, and Ferreñafe</strong>—forces smallholders and local workers to resort to improvised open-pit or tubular wells. While large-scale agro-export corporations extract deep groundwater unchecked, small farmers in tail-end zones face the severe daily threat of toxic brackish water, irreversible soil salinization, and critical public health risks. <strong>Órbita Moche</strong> translates open NASA satellite data into actionable early irrigation alerts and sustainable soil protection.
+                    </p>
+                    <a href="/dashboard" id="btn-open-platform" class="btn btn-primary btn-launch text-white">
+                        <i class="bi bi-cpu me-2"></i> Launch Monitoring Platform
+                    </a>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card card-feature p-4">
+                        <h6 id="card-impact-title" class="text-info text-uppercase fw-bold mb-3 small">Prototype Impact</h6>
+                        <div class="mb-3 pb-3 border-bottom border-secondary">
+                            <div id="imp-1-t" class="fs-5 fw-bold text-white">Salinity & Scarcity Mitigation</div>
+                            <small id="imp-1-d" class="text-secondary">Protects smallholders from over-pumping toxic brackish groundwater in critical tail-end zones like Mórrope.</small>
+                        </div>
+                        <div class="mb-3 pb-3 border-bottom border-secondary">
+                            <div id="imp-2-t" class="fs-5 fw-bold text-white">Early Detection (SMAP/NDVI)</div>
+                            <small id="imp-2-d" class="text-secondary">Identifies topsoil moisture deficits weeks before visible crop degradation occurs.</small>
+                        </div>
+                        <div>
+                            <div id="imp-3-t" class="fs-5 fw-bold text-white">Resilient Crop Rotation</div>
+                            <small id="imp-3-d" class="text-secondary">Recommends water-efficient crops based on NASA POWER thermal stress and seasonal metrics.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="py-5">
+        <div class="container">
+            <h3 id="sec-nasa-title" class="fw-bold text-white mb-4">Official NASA & Partner Datasets Integrated</h3>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="card card-feature p-3 h-100">
+                        <span class="badge nasa-tag align-self-start mb-2">NASA POWER</span>
+                        <h6 class="fw-bold text-white">Agroclimatology & Meteorology</h6>
+                        <p class="text-secondary small mb-0">Daily surface temperature series (T2M), solar radiation, and precipitation for thermal stress analysis.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-feature p-3 h-100">
+                        <span class="badge nasa-tag align-self-start mb-2">NASA SMAP & GPM</span>
+                        <h6 class="fw-bold text-white">Soil Moisture & Precipitation</h6>
+                        <p class="text-secondary small mb-0">Topsoil moisture (0–5 cm) and rainfall accumulation to optimize irrigation shifts in Tinajones and Moche.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-feature p-3 h-100">
+                        <span class="badge nasa-tag align-self-start mb-2">Landsat / Sentinel-2 & SRTM</span>
+                        <h6 class="fw-bold text-white">Vegetation Vigor (NDVI) & Elevation</h6>
+                        <p class="text-secondary small mb-0">Multispectral crop health monitoring and terrain slope runoff modeling.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        const HOME_TXT = {
+            es: {
+                navDash: "Ir al Dashboard",
+                title: "Resiliencia hídrica y rotación inteligente de cultivos desde el espacio",
+                desc: "En la costa norte del Perú, la grave escasez hídrica en la cola del sistema del Reservorio Tinajones—con epicentro crítico en Mórrope y San José, además de los distritos de valle como Túcume, Mochumí y Ferreñafe—obliga a los pequeños agricultores y pobladores a construir pozos artesanales a tajo abierto o tubulares. Mientras las grandes corporaciones agroexportadoras sobreexplotan el acuífero profundo a gran escala, los pequeños productores sufren la exposición directa a agua salobre tóxica, suelos degradados y severos riesgos para la salud pública. Órbita Moche transforma los datos satelitales abiertos de la NASA en alertas tempranas y protección sostenible del suelo.",
+                btnOpen: "Abrir Plataforma de Monitoreo",
+                impTitle: "Impacto del Prototipo",
+                i1t: "Mitigación de Salinidad en Mórrope", i1d: "Protege de forma directa a los agricultores de la cola de cuenca frente a la toxicidad del agua salobre subterránea.",
+                i2t: "Detección temprana (SMAP/NDVI)", i2d: "Identifica déficits de humedad en el suelo semanas antes de que ocurra degradación visible.",
+                i3t: "Rotación de cultivos resiliente", i3d: "Recomienda cultivos eficientes en agua según el estrés térmico de NASA POWER y métricas estacionales.",
+                secNasa: "Integración de conjuntos de datos oficiales de la NASA y sus socios"
+            },
+            en: {
+                navDash: "Go to Dashboard",
+                title: "Water resilience and smart crop rotation from space",
+                desc: "On the northern coast of Peru, severe water scarcity at the tail-end of the Tinajones Reservoir system—most critically in Mórrope and San José, alongside valley districts like Túcume, Mochumí, and Ferreñafe—forces smallholders and local workers to resort to improvised open-pit or tubular wells. While large-scale agro-export corporations extract deep groundwater unchecked, small farmers in tail-end zones face the severe daily threat of toxic brackish water, irreversible soil salinization, and critical public health risks. Órbita Moche translates open NASA satellite data into actionable early irrigation alerts and sustainable soil protection.",
+                btnOpen: "Launch Monitoring Platform",
+                impTitle: "Prototype Impact",
+                i1t: "Salinity & Scarcity Mitigation", i1d: "Protects smallholders from over-pumping toxic brackish groundwater in critical tail-end zones like Mórrope.",
+                i2t: "Early Detection (SMAP/NDVI)", i2d: "Identifies topsoil moisture deficits weeks before visible crop degradation occurs.",
+                i3t: "Resilient Crop Rotation", i3d: "Recommends water-efficient crops based on NASA POWER thermal stress and seasonal metrics.",
+                secNasa: "Official NASA & Partner Datasets Integrated"
+            }
+        };
+
+        function aplicarIdiomaHome(lang) {
+            const t = HOME_TXT[lang];
+            document.getElementById('nav-dash').textContent = t.navDash;
+            document.getElementById('hero-title').textContent = t.title;
+            document.getElementById('hero-desc').textContent = t.desc;
+            document.getElementById('btn-open-platform').innerHTML = `<i class="bi bi-cpu me-2"></i> ${t.btnOpen}`;
+            document.getElementById('card-impact-title').textContent = t.impTitle;
+            document.getElementById('imp-1-t').textContent = t.i1t;
+            document.getElementById('imp-1-d').textContent = t.i1d;
+            document.getElementById('imp-2-t').textContent = t.i2t;
+            document.getElementById('imp-2-d').textContent = t.i2d;
+            document.getElementById('imp-3-t').textContent = t.i3t;
+            document.getElementById('imp-3-d').textContent = t.i3d;
+            document.getElementById('sec-nasa-title').textContent = t.secNasa;
+            localStorage.setItem('orbita_moche_lang', lang);
+        }
+
+        document.getElementById('langHome').addEventListener('change', (e) => {
+            aplicarIdiomaHome(e.target.value);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('orbita_moche_lang') || 'en';
+            document.getElementById('langHome').value = savedLang;
+            aplicarIdiomaHome(savedLang);
+        });
+    </script>
+</body>
+</html>
